@@ -345,10 +345,44 @@ function library:showKeybindContextMenu(input, flag, applyCallback)
         end)
     end
     
+    local currentMode = library.options[flag] and library.options[flag].mode or "Always"
     local modes = {"Always", "Toggle", "Hold"}
     for i, mode in ipairs(modes) do
-        makeOption(mode, (i-1) * 20, function()
+        local btn = Instance.new("TextButton")
+        btn.BackgroundTransparency = 1
+        btn.Size = UDim2.new(1, 0, 0, 20)
+        btn.Position = UDim2.new(0, 0, 0, (i-1) * 20)
+        btn.Font = Enum.Font.Code
+        btn.Text = "  " .. mode
+        btn.TextXAlignment = Enum.TextXAlignment.Left
+        btn.TextSize = 12
+        btn.ZIndex = 10001
+        btn.Parent = inner
+        if mode == currentMode then
+            btn.TextColor3 = library.libColor
+            btn.BackgroundTransparency = 0.85
+            btn.BackgroundColor3 = library.libColor
+        else
+            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        end
+        btn.MouseEnter:Connect(function()
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.BackgroundTransparency = 0.85
+            btn.BackgroundColor3 = library.libColor
+        end)
+        btn.MouseLeave:Connect(function()
+            if mode == currentMode then
+                btn.TextColor3 = library.libColor
+                btn.BackgroundTransparency = 0.85
+                btn.BackgroundColor3 = library.libColor
+            else
+                btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                btn.BackgroundTransparency = 1
+            end
+        end)
+        btn.MouseButton1Click:Connect(function()
             if applyCallback then applyCallback(mode) end
+            closeMenu()
         end)
     end
 
@@ -1032,7 +1066,7 @@ function library:addTab(name)
             text.Font = Enum.Font.Code
             text.Text = args.text or args.flag
             text.TextColor3 = Color3.fromRGB(155, 155, 155)
-            text.TextSize = 13.000
+            text.TextSize = 11.000
             text.TextStrokeTransparency = 0.000
             text.TextXAlignment = Enum.TextXAlignment.Left
             
@@ -1111,7 +1145,7 @@ function library:addTab(name)
                 keybind.BorderSizePixel = 0
                 keybind.AnchorPoint = Vector2.new(1, 0)
                 keybind.Position = UDim2.new(1, -6, 0.272, 0)
-                keybind.Size = UDim2.new(0, 50, 0, 15)
+                keybind.Size = UDim2.new(0, 42, 0, 12)
                 
                 button_bg.Name = "bg"
                 button_bg.Parent = keybind
@@ -1134,7 +1168,7 @@ function library:addTab(name)
                 button.Font = Enum.Font.Code
                 button.Text = "--"
                 button.TextColor3 = Color3.fromRGB(155, 155, 155)
-                button.TextSize = 13.000
+                button.TextSize = 10.000
                 button.TextStrokeTransparency = 0.000
                 button.TextXAlignment = Enum.TextXAlignment.Center
     
@@ -1207,7 +1241,7 @@ function library:addTab(name)
                 end)
     
                 library.flags[args.flag] = Enum.KeyCode.Unknown
-                library.options[args.flag] = {type = "keybind", mode = "Always", changeState = updateValue, skipflag = args.skipflag, oldargs = args, parentToggleFlag = args._parentToggleFlag, _active = nil}
+                library.options[args.flag] = {type = "keybind", mode = args.mode or "Always", changeState = updateValue, skipflag = args.skipflag, oldargs = args, parentToggleFlag = args._parentToggleFlag, _active = nil}
     
                 updateValue(args.key or Enum.KeyCode.Unknown)
             end
@@ -1237,7 +1271,7 @@ function library:addTab(name)
                 colorpicker.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 colorpicker.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 colorpicker.BorderSizePixel = 3
-                colorpicker.Position = args.second and UDim2.new(0.720000029, 4, 0.272000015, 0) or UDim2.new(0.860000014, 4, 0.272000015, 0)
+                colorpicker.Position = UDim2.new(0.86 - 0.14 * ((args.index or (args.second and 2) or 1) - 1), 4, 0.272, 0)
                 colorpicker.Size = UDim2.new(0, 20, 0, 10)
                 
                 mid.Name = "mid"
@@ -1265,11 +1299,21 @@ function library:addTab(name)
 
 				colorFrame.Name = "colorFrame"
 				colorFrame.Parent = toggleframe
-				colorFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+				colorFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 				colorFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 				colorFrame.BorderSizePixel = 2
-				colorFrame.Position = UDim2.new(0.101092957, 0, 0.75, 0)
-				colorFrame.Size = UDim2.new(0, 137, 0, 128)
+				colorFrame.Position = UDim2.new(0.101092957 - 0.14 * ((args.index or 1) - 1), 0, 0.75, 0)
+				colorFrame.Size = UDim2.new(0, 150, 0, 160)
+
+				-- Premium Line/Title Bar at the top of colorpicker frame
+				local topBar = Instance.new("Frame")
+				topBar.Name = "TopBar"
+				topBar.Parent = colorFrame
+				topBar.BackgroundColor3 = library.libColor
+				table.insert(library.accentElements, {obj = topBar, prop = "BackgroundColor3"})
+				topBar.BorderSizePixel = 0
+				topBar.Size = UDim2.new(1, 0, 0, 2)
+				topBar.ZIndex = 105
 
 				colorFrame_2.Name = "colorFrame"
 				colorFrame_2.Parent = colorFrame
@@ -1374,14 +1418,96 @@ function library:addTab(name)
                     end)
                 end)
 
+                local currentAlpha = 1.0
                 local function updateValue(value,fakevalue)
                     if typeof(value) == "table" then value = fakevalue end
+                    -- Keep alpha component if colorpicker value is Color3
                     library.flags[args.flag] = value
                     front.BackgroundColor3 = value
+                    if updateAlphaGradient then updateAlphaGradient(value) end
+                    -- Store alpha in library.flags[args.flag .. "_alpha"]
+                    library.flags[args.flag .. "_alpha"] = currentAlpha
                     if args.callback then
-                        args.callback(value)
+                        args.callback(value, currentAlpha)
                     end
                 end
+
+                -- Transparency Slider at the bottom of colorFrame popup
+                local alphaBg = Instance.new("Frame")
+                alphaBg.Name = "alphaBg"
+                alphaBg.Parent = colorFrame
+                alphaBg.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+                alphaBg.BorderColor3 = Color3.fromRGB(60, 60, 60)
+                alphaBg.BorderSizePixel = 1
+                alphaBg.Position = UDim2.new(0.05, 0, 0.85, 0)
+                alphaBg.Size = UDim2.new(0.9, 0, 0, 12)
+                alphaBg.ZIndex = 106
+
+                -- Checkerboard/Stripes image label to represent transparency underneath the color slider
+                local alphaPattern = Instance.new("ImageLabel")
+                alphaPattern.Name = "alphaPattern"
+                alphaPattern.Parent = alphaBg
+                alphaPattern.BackgroundTransparency = 1
+                alphaPattern.Size = UDim2.new(1, 0, 1, 0)
+                alphaPattern.ZIndex = 107
+                alphaPattern.Image = "rbxassetid://3887014957" -- Checkerboard texture ID
+                alphaPattern.ScaleType = Enum.ScaleType.Tile
+                alphaPattern.TileSize = UDim2.new(0, 10, 0, 10)
+
+                local alphaBar = Instance.new("Frame")
+                alphaBar.Name = "alphaBar"
+                alphaBar.Parent = alphaBg
+                alphaBar.BorderSizePixel = 0
+                alphaBar.Size = UDim2.new(1, 0, 1, 0)
+                alphaBar.ZIndex = 108
+                
+                local alphaGrad = Instance.new("UIGradient")
+                alphaGrad.Name = "alphaGrad"
+                alphaGrad.Parent = alphaBar
+                
+                local function updateAlphaGradient(baseColor)
+                    alphaGrad.Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(0,0,0)), -- transparent end
+                        ColorSequenceKeypoint.new(1, baseColor)             -- opaque end
+                    })
+                end
+
+                local alphaBtn = Instance.new("TextButton")
+                alphaBtn.Name = "alphaBtn"
+                alphaBtn.Parent = alphaBg
+                alphaBtn.BackgroundTransparency = 1
+                alphaBtn.Size = UDim2.new(1, 0, 1, 0)
+                alphaBtn.Text = ""
+                alphaBtn.ZIndex = 109
+
+                local alphaPin = Instance.new("Frame")
+                alphaPin.Name = "alphaPin"
+                alphaPin.Parent = alphaBg
+                alphaPin.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                alphaPin.BorderColor3 = Color3.fromRGB(0, 0, 0)
+                alphaPin.BorderSizePixel = 1
+                alphaPin.Size = UDim2.new(0, 4, 1, 4)
+                alphaPin.Position = UDim2.new(1, -2, 0, -2)
+                alphaPin.ZIndex = 110
+
+                local function updateAlpha(x)
+                    local percent = math.clamp((x - alphaBg.AbsolutePosition.X) / alphaBg.AbsoluteSize.X, 0, 1)
+                    currentAlpha = percent
+                    alphaPin.Position = UDim2.new(percent, -2, 0, -2)
+                    -- Trigger value update
+                    local col = library.flags[args.flag] or Color3.new(1,1,1)
+                    updateValue(col)
+                end
+
+                alphaBtn.MouseButton1Down:Connect(function()
+                    library.colorpicking = true
+                    while inputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+                        updateAlpha(inputService:GetMouseLocation().X)
+                        heartbeat:wait()
+                    end
+                    library.colorpicking = false
+                end)
+
 
                 local white, black = Color3.new(1,1,1), Color3.new(0,0,0)
                 local colors = {Color3.new(1,0,0),Color3.new(1,1,0),Color3.new(0,1,0),Color3.new(0,1,1),Color3.new(0,0,1),Color3.new(1,0,1),Color3.new(1,0,0)}
@@ -1499,7 +1625,7 @@ function library:addTab(name)
             button.Font = Enum.Font.Code
             button.Text = args.text or args.flag
             button.TextColor3 = Color3.fromRGB(255, 255, 255)
-            button.TextSize = 13.000
+            button.TextSize = 10.000
             button.TextStrokeTransparency = 0.000
             
             gradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(105, 105, 105)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(121, 121, 121))}
@@ -1596,7 +1722,93 @@ function library:addTab(name)
                 end)
             end
         end
+        
+        function group:addInlineSliders(argsList)
+            if #argsList < 2 then return end
+            local args1, args2 = argsList[1], argsList[2]
+            
+            groupbox.Size = groupbox.Size + UDim2.new(0, 0, 0, 30)
+            local wrapper = Instance.new("Frame")
+            wrapper.Name = "InlineSlidersWrapper"
+            wrapper.BackgroundTransparency = 1
+            wrapper.Size = UDim2.new(1, 0, 0, 30)
+            wrapper.Parent = grouper
+            
+            local oldGrouper = grouper
+            grouper = wrapper
+            
+            local s1 = group:addSlider(args1)
+            local s1Frame = wrapper:GetChildren()[1]
+            s1Frame.Size = UDim2.new(0.48, 0, 1, 0)
+            s1Frame.Position = UDim2.new(0, 0, 0, 0)
+            
+            local s2 = group:addSlider(args2)
+            local s2Frame = wrapper:GetChildren()[2]
+            s2Frame.Size = UDim2.new(0.48, 0, 1, 0)
+            s2Frame.Position = UDim2.new(0.52, 0, 0, 0)
+            
+            grouper = oldGrouper
+            groupbox.Size = groupbox.Size - UDim2.new(0, 0, 0, 60)
+            
+            return {s1, s2}
+        end
+
+        function group:addInlineColorpickers(argsList)
+            if #argsList < 2 then return end
+            local count = math.min(#argsList, 4)
+            groupbox.Size = groupbox.Size + UDim2.new(0, 0, 0, 20)
+            local wrapper = Instance.new("Frame")
+            wrapper.Name = "InlineColorpickersWrapper"
+            wrapper.BackgroundTransparency = 1
+            wrapper.Size = UDim2.new(1, 0, 0, 20)
+            wrapper.Parent = grouper
+
+            local spacing = 1 / count
+            for idx = 1, count do
+                local a = argsList[idx]
+                a.index = a.index or 1
+                local cpFrame = Instance.new("Frame")
+                cpFrame.BackgroundTransparency = 1
+                cpFrame.Size = UDim2.new(spacing, -4, 1, 0)
+                cpFrame.Position = UDim2.new((idx - 1) * spacing, 2, 0, 0)
+                cpFrame.Parent = wrapper
+
+                local label = Instance.new("TextLabel")
+                label.BackgroundTransparency = 1
+                label.Size = UDim2.new(1, -24, 1, 0)
+                label.Font = Enum.Font.Code
+                label.Text = a.text or a.flag
+                label.TextColor3 = Color3.fromRGB(200, 200, 200)
+                label.TextSize = 11
+                label.TextStrokeTransparency = 0
+                label.TextXAlignment = Enum.TextXAlignment.Left
+                label.Parent = cpFrame
+
+                local cpBtn = Instance.new("Frame")
+                cpBtn.Size = UDim2.new(0, 18, 0, 10)
+                cpBtn.Position = UDim2.new(1, -20, 0.5, -5)
+                cpBtn.BackgroundColor3 = a.color or Color3.new(1,1,1)
+                cpBtn.BorderColor3 = Color3.fromRGB(0,0,0)
+                cpBtn.BorderSizePixel = 2
+                cpBtn.Parent = cpFrame
+
+                local btn = Instance.new("TextButton")
+                btn.Size = UDim2.new(1, 0, 1, 0)
+                btn.BackgroundTransparency = 1
+                btn.Text = ""
+                btn.Parent = cpBtn
+
+                library.flags[a.flag] = a.color or Color3.new(1,1,1)
+                library.options[a.flag] = {type = "colorpicker", skipflag = a.skipflag, oldargs = a, changeState = function(val) library.flags[a.flag] = val; cpBtn.BackgroundColor3 = val; if a.callback then a.callback(val) end end}
+
+                btn.MouseButton1Click:Connect(function()
+                    library.options[a.flag].changeState(library.flags[a.flag])
+                end)
+            end
+        end
+
         function group:addSlider(args,sub)
+            sub = sub or args.suffix or ""
             if not args.flag or not args.max then return warn("⚠️ incorrect arguments ⚠️") end
             groupbox.Size += UDim2.new(0, 0, 0, 30)
 
@@ -1621,8 +1833,8 @@ function library:addTab(name)
             bg.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
             bg.BorderColor3 = Color3.fromRGB(0, 0, 0)
             bg.BorderSizePixel = 2
-            bg.Position = UDim2.new(0.02, -1, 0, 16)
-            bg.Size = UDim2.new(0, 205, 0, 10)
+            bg.Position = UDim2.new(0.02, 0, 0, 16)
+            bg.Size = UDim2.new(0.96, 0, 0, 10)
             
             main.Name = "main"
             main.Parent = bg
@@ -1643,7 +1855,7 @@ function library:addTab(name)
             button.Parent = main
             button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             button.BackgroundTransparency = 1.000
-            button.Size = UDim2.new(0, 191, 1, 0)
+            button.Size = UDim2.new(1, 0, 1, 0)
             button.Font = Enum.Font.SourceSans
             button.Text = ""
             button.TextColor3 = Color3.fromRGB(0, 0, 0)
@@ -1672,7 +1884,7 @@ function library:addTab(name)
             text.Font = Enum.Font.Code
             text.Text = args.text or args.flag
             text.TextColor3 = Color3.fromRGB(244, 244, 244)
-            text.TextSize = 13.000
+            text.TextSize = 11.000
             text.TextStrokeTransparency = 0.000
             text.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -1767,7 +1979,7 @@ function library:addTab(name)
             bg.BackgroundColor3 = Color3.fromRGB(15,15,15)
             bg.BorderColor3 = Color3.fromRGB(0, 0, 0)
             bg.BorderSizePixel = 2
-            bg.Position = UDim2.new(0.02, -1, 0, 16)
+            bg.Position = UDim2.new(0.02, 0, 0, 16)
             bg.Size = UDim2.new(0, 205, 0, 15)
 
             main.Name = "main"
@@ -1806,7 +2018,7 @@ function library:addTab(name)
             text.Font = Enum.Font.Code
             text.Text = args.text or args.flag
             text.TextColor3 = Color3.fromRGB(244, 244, 244)
-            text.TextSize = 13.000
+            text.TextSize = 11.000
             text.TextStrokeTransparency = 0.000
             text.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -1876,7 +2088,7 @@ function library:addTab(name)
             bg.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
             bg.BorderColor3 = Color3.fromRGB(0, 0, 0)
             bg.BorderSizePixel = 2
-            bg.Position = UDim2.new(0.02, -1, 0, 16)
+            bg.Position = UDim2.new(0.02, 0, 0, 16)
             bg.Size = UDim2.new(0, 205, 0, 15)
 
             main.Name = "main"
@@ -1892,7 +2104,7 @@ function library:addTab(name)
             button.Parent = main
             button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             button.BackgroundTransparency = 1.000
-            button.Size = UDim2.new(0, 191, 1, 0)
+            button.Size = UDim2.new(1, 0, 1, 0)
             button.Font = Enum.Font.SourceSans
             button.Text = ""
             button.TextColor3 = Color3.fromRGB(0, 0, 0)
@@ -1918,7 +2130,7 @@ function library:addTab(name)
             valuetext.Font = Enum.Font.Code
             valuetext.Text = ""
             valuetext.TextColor3 = Color3.fromRGB(244, 244, 244)
-            valuetext.TextSize = 13.000
+            valuetext.TextSize = 11.000
             valuetext.TextStrokeTransparency = 0.000
             valuetext.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -1936,7 +2148,7 @@ function library:addTab(name)
             text.Font = Enum.Font.Code
             text.Text = args.text or args.flag
             text.TextColor3 = Color3.fromRGB(244, 244, 244)
-            text.TextSize = 13.000
+            text.TextSize = 11.000
             text.TextStrokeTransparency = 0.000
             text.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -2302,7 +2514,7 @@ function library:addTab(name)
             text.Font = Enum.Font.Code
             text.Text = args.text or args.flag
             text.TextColor3 = Color3.fromRGB(244, 244, 244)
-            text.TextSize = 13.000
+            text.TextSize = 11.000
             text.TextStrokeTransparency = 0.000
             text.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -2322,7 +2534,7 @@ function library:addTab(name)
             colorpicker_2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             colorpicker_2.BorderColor3 = Color3.fromRGB(0, 0, 0)
             colorpicker_2.BorderSizePixel = 3
-            colorpicker_2.Position = UDim2.new(0.860000014, 4, 0.272000015, 0)
+            colorpicker_2.Position = UDim2.new(0.86 - 0.14 * ((args.index or (args.second and 2) or 1) - 1), 4, 0.272, 0)
             colorpicker_2.Size = UDim2.new(0, 20, 0, 10)
 
             mid.Name = "mid"
@@ -2351,11 +2563,21 @@ function library:addTab(name)
 
 			colorFrame.Name = "colorFrame"
 			colorFrame.Parent = colorpicker
-			colorFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+			colorFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 			colorFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 			colorFrame.BorderSizePixel = 2
-			colorFrame.Position = UDim2.new(0.101092957, 0, 0.75, 0)
-			colorFrame.Size = UDim2.new(0, 137, 0, 128)
+			colorFrame.Position = UDim2.new(0.101092957 - 0.14 * ((args.index or 1) - 1), 0, 0.75, 0)
+			colorFrame.Size = UDim2.new(0, 150, 0, 160)
+
+			-- Premium Line/Title Bar at the top of colorpicker frame
+			local topBar = Instance.new("Frame")
+			topBar.Name = "TopBar"
+			topBar.Parent = colorFrame
+			topBar.BackgroundColor3 = library.libColor
+			table.insert(library.accentElements, {obj = topBar, prop = "BackgroundColor3"})
+			topBar.BorderSizePixel = 0
+			topBar.Size = UDim2.new(1, 0, 0, 2)
+			topBar.ZIndex = 105
 
 			colorFrame_2.Name = "colorFrame"
 			colorFrame_2.Parent = colorFrame
@@ -2459,14 +2681,93 @@ function library:addTab(name)
                 end)
             end)
 
+            local currentAlpha = 1.0
             local function updateValue(value,fakevalue)
                 if typeof(value) == "table" then value = fakevalue end
                 library.flags[args.flag] = value
                 front.BackgroundColor3 = value
+                    if updateAlphaGradient then updateAlphaGradient(value) end
+                library.flags[args.flag .. "_alpha"] = currentAlpha
                 if args.callback then
-                    args.callback(value)
+                    args.callback(value, currentAlpha)
                 end
 			end
+
+            -- Transparency Slider at the bottom of colorFrame popup
+            local alphaBg = Instance.new("Frame")
+            alphaBg.Name = "alphaBg"
+            alphaBg.Parent = colorFrame
+            alphaBg.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+            alphaBg.BorderColor3 = Color3.fromRGB(60, 60, 60)
+            alphaBg.BorderSizePixel = 1
+            alphaBg.Position = UDim2.new(0.05, 0, 0.85, 0)
+            alphaBg.Size = UDim2.new(0.9, 0, 0, 12)
+            alphaBg.ZIndex = 106
+
+            -- Checkerboard/Stripes image label to represent transparency underneath the color slider
+            local alphaPattern = Instance.new("ImageLabel")
+            alphaPattern.Name = "alphaPattern"
+            alphaPattern.Parent = alphaBg
+            alphaPattern.BackgroundTransparency = 1
+            alphaPattern.Size = UDim2.new(1, 0, 1, 0)
+            alphaPattern.ZIndex = 107
+            alphaPattern.Image = "rbxassetid://3887014957" -- Checkerboard texture ID
+            alphaPattern.ScaleType = Enum.ScaleType.Tile
+            alphaPattern.TileSize = UDim2.new(0, 10, 0, 10)
+
+            local alphaBar = Instance.new("Frame")
+            alphaBar.Name = "alphaBar"
+            alphaBar.Parent = alphaBg
+            alphaBar.BorderSizePixel = 0
+            alphaBar.Size = UDim2.new(1, 0, 1, 0)
+            alphaBar.ZIndex = 108
+            
+            local alphaGrad = Instance.new("UIGradient")
+            alphaGrad.Name = "alphaGrad"
+            alphaGrad.Parent = alphaBar
+            
+            local function updateAlphaGradient(baseColor)
+                alphaGrad.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(0,0,0)), -- transparent end
+                    ColorSequenceKeypoint.new(1, baseColor)             -- opaque end
+                })
+            end
+
+            local alphaBtn = Instance.new("TextButton")
+            alphaBtn.Name = "alphaBtn"
+            alphaBtn.Parent = alphaBg
+            alphaBtn.BackgroundTransparency = 1
+            alphaBtn.Size = UDim2.new(1, 0, 1, 0)
+            alphaBtn.Text = ""
+            alphaBtn.ZIndex = 109
+
+            local alphaPin = Instance.new("Frame")
+            alphaPin.Name = "alphaPin"
+            alphaPin.Parent = alphaBg
+            alphaPin.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            alphaPin.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            alphaPin.BorderSizePixel = 1
+            alphaPin.Size = UDim2.new(0, 4, 1, 4)
+            alphaPin.Position = UDim2.new(1, -2, 0, -2)
+            alphaPin.ZIndex = 110
+
+            local function updateAlpha(x)
+                local percent = math.clamp((x - alphaBg.AbsolutePosition.X) / alphaBg.AbsoluteSize.X, 0, 1)
+                currentAlpha = percent
+                alphaPin.Position = UDim2.new(percent, -2, 0, -2)
+                local col = library.flags[args.flag] or Color3.new(1,1,1)
+                updateValue(col)
+            end
+
+            alphaBtn.MouseButton1Down:Connect(function()
+                library.colorpicking = true
+                while inputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+                    updateAlpha(inputService:GetMouseLocation().X)
+                    heartbeat:wait()
+                end
+                library.colorpicking = false
+            end)
+
 
             local white, black = Color3.new(1,1,1), Color3.new(0,0,0)
             local colors = {Color3.new(1,0,0),Color3.new(1,1,0),Color3.new(0,1,0),Color3.new(0,1,1),Color3.new(0,0,1),Color3.new(1,0,1),Color3.new(1,0,0)}
@@ -2566,7 +2867,7 @@ function library:addTab(name)
             text.Font = Enum.Font.Code
             text.Text = args.text or args.flag
             text.TextColor3 = Color3.fromRGB(244, 244, 244)
-            text.TextSize = 13.000
+            text.TextSize = 11.000
             text.TextStrokeTransparency = 0.000
             text.TextXAlignment = Enum.TextXAlignment.Left
             
@@ -2593,7 +2894,7 @@ function library:addTab(name)
             button.Font = Enum.Font.Code
             button.Text = "--"
             button.TextColor3 = Color3.fromRGB(155, 155, 155)
-            button.TextSize = 13.000
+            button.TextSize = 10.000
             button.TextStrokeTransparency = 0.000
             button.TextXAlignment = Enum.TextXAlignment.Center
 
@@ -3203,13 +3504,14 @@ function library:CreateDraggablePanel(name, defaultPos, transparent)
 end
 
 -- 1. WATERMARK
-local wmPanel, wmContent, wmLayout = library:CreateDraggablePanel("", UDim2.new(0.5, -150, 0, 10), false)
+local wmPanel, wmContent, wmLayout = library:CreateDraggablePanel("", UDim2.new(0.5, 0, 0, 10), false)
+wmPanel.AnchorPoint = Vector2.new(0.5, 0)
 
 local textService = game:GetService("TextService")
-local worstCaseText = string.format("swag.pro | %s | 999 fps | 9999 ms", game.Players.LocalPlayer.DisplayName)
-local wmBounds = textService:GetTextSize(worstCaseText, 13, Enum.Font.Code, Vector2.new(9999, 100))
+local initWmText = string.format("swag.pro | %s | 0 fps | 0 ms", game.Players.LocalPlayer.DisplayName)
+local initWmBounds = textService:GetTextSize(initWmText, 13, Enum.Font.Code, Vector2.new(9999, 100))
 
-wmPanel.Size = UDim2.new(0, wmBounds.X + 16, 0, 24)
+wmPanel.Size = UDim2.new(0, initWmBounds.X + 16, 0, 24)
 if wmLayout then wmLayout:Destroy() end
 if wmContent then wmContent:Destroy() end
 
@@ -3221,6 +3523,9 @@ local frames, lastTick = 0, tick()
 
 -- 2. KEYBINDS
 local kbPanel, kbContent, kbLayout = library:CreateDraggablePanel("Keybinds", UDim2.new(0, 10, 0.5, -100), false)
+local kbScale = Instance.new("UIScale")
+kbScale.Scale = 0.85
+kbScale.Parent = kbPanel
 kbLayout.Padding = UDim.new(0, 1)
 
 -- 3. ARRAYLIST
@@ -3238,6 +3543,10 @@ game:GetService("RunService").RenderStepped:Connect(function()
         pcall(function() ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) end)
         local text = string.format("swag.pro | %s | %d fps | %d ms", game.Players.LocalPlayer.DisplayName, frames, ping)
         wmTitle.Text = text
+        
+        -- Dynamically calculate text bounds for watermark panel centering
+        local textBounds = textService:GetTextSize(text, 13, Enum.Font.Code, Vector2.new(9999, 100))
+        wmPanel.Size = UDim2.new(0, textBounds.X + 16, 0, 24)
         
         frames = 0
         lastTick = tick()
@@ -3288,8 +3597,8 @@ game:GetService("RunService").RenderStepped:Connect(function()
             for _, bind in ipairs(activeBinds) do
                 local leftStr = string.format("  [%s] %s", bind.key, bind.text)
                 local modeStr = string.format("[%s]  ", string.lower(bind.mode))
-                local leftSize = _ts:GetTextSize(leftStr, 13, Enum.Font.Code, Vector2.new(9999, 20))
-                local modeSize = _ts:GetTextSize(modeStr, 13, Enum.Font.Code, Vector2.new(9999, 20))
+                local leftSize = _ts:GetTextSize(leftStr, 11, Enum.Font.Code, Vector2.new(9999, 17))
+                local modeSize = _ts:GetTextSize(modeStr, 11, Enum.Font.Code, Vector2.new(9999, 17))
                 if leftSize.X > maxLeftW then maxLeftW = leftSize.X end
                 if modeSize.X > modeW then modeW = modeSize.X end
             end
@@ -3301,10 +3610,10 @@ game:GetService("RunService").RenderStepped:Connect(function()
                 if not lbl then
                     lbl = Instance.new("TextLabel")
                     lbl.BackgroundTransparency = 1
-                    lbl.Size = UDim2.new(1, 0, 0, 20)
+                    lbl.Size = UDim2.new(1, 0, 0, 17)
                     lbl.Font = Enum.Font.Code
                     lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
-                    lbl.TextSize = 13
+                    lbl.TextSize = 11
                     lbl.TextStrokeTransparency = 0
                     lbl.TextXAlignment = Enum.TextXAlignment.Left
                     lbl.TextTruncate = Enum.TextTruncate.AtEnd
@@ -3317,7 +3626,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
                     modeLbl.BackgroundTransparency = 1
                     modeLbl.Font = Enum.Font.Code
                     modeLbl.TextColor3 = Color3.fromRGB(120, 120, 120)
-                    modeLbl.TextSize = 13
+                    modeLbl.TextSize = 11
                     modeLbl.TextStrokeTransparency = 0
                     modeLbl.TextXAlignment = Enum.TextXAlignment.Right
                     modeLbl.ZIndex = 404
@@ -3329,7 +3638,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
                 lbl.Mode.Text = string.format("[%s]  ", string.lower(bind.mode))
 
                 -- Size: main label leaves room for mode on the right
-                lbl.Size = UDim2.new(1, 0, 0, 20)
+                lbl.Size = UDim2.new(1, 0, 0, 17)
                 lbl.Mode.Size = UDim2.new(0, modeW + 4, 1, 0)
                 lbl.Mode.Position = UDim2.new(1, -(modeW + 4), 0, 0)
 
@@ -3361,7 +3670,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
                     end
                 end
                 lbl.Visible = true
-                kbHeight = kbHeight + 20
+                kbHeight = kbHeight + 17
             end
 
             for i = #activeBinds + 1, #kbLabels do
